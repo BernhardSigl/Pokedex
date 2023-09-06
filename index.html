@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokedex</title>
+    <link rel="icon" href="./img/pokeball.png">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="fonts.css">
+    <!-- Chart: -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="chart.js"></script>
+    <script src="script.js"></script>
+</head>
+
+<body onload="init()">
+    <div w3-include-html="templates/header.html"></div>
+
+    <div id="pokemonCollectionId"></div> <!--Gesamte Collection Mittig ausrichten + gap-->
+
+    <button onclick="loadMore()">Load More</button>
+    <div id="pokemonDetailsId">
+
+    </div>
+
+
+
+</body>
+
+</html>
