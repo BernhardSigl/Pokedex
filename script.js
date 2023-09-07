@@ -21,7 +21,7 @@ const typeColors = {
 
 async function init() {
     await includeHTML();
-    await loadPokemonCollection();
+    await renderAPI();
 }
 
 async function includeHTML() {
@@ -37,6 +37,7 @@ async function includeHTML() {
         }
     }
 }
+
 // Für Diagramm
 let baseStatsNamesArray = [];
 let baseStatsValuesArray = [];
@@ -44,50 +45,54 @@ let baseStatsValuesArray = [];
 // Load More
 let limit = 20;
 
+// Für Suchfunktion
 let pokemonCardArray = [];
 
-
-let pokemonCollection;
-async function loadPokemonCollection() {
+// Alle Pokemons laden bis zum Limit
+async function renderAPI() {
     let url = `https://pokeapi.co/api/v2/pokemon?limit=${limit}&offset=0`;
     let response = await fetch(url);
-    pokemonCollection = await response.json();
-    renderPokemonCollection();
-    pokemonCardArray.push(); // für die Suchfunktion
+    let pokemonAPI = await response.json();
+    renderInfos(pokemonAPI);
 }
 
-function renderPokemonCollection() {
-    let allNames = pokemonCollection['results'];
+function renderInfos(pokemonAPI) {
+    let allNames = pokemonAPI['results'];
     for (let i = 0; i < allNames.length; i++) {
         let name = allNames[i]['name']; // zeigt alle Pokemon Namen
-        pokemonCardArray.push(name);
-        loadPokemonAPI(name, i);
+        pokemonCardArray.push(name); // für die Suchfunktion
+        renderImageTypeColor(name, i);
         // Pokemon Namen auf der Index Startseite einblenden
-        document.getElementById('pokemonCollectionId').innerHTML += /* html */ `
-        <div class="pokemon-card" id="pokemon-card-id${[i]}">
-                <!--number-->
-                <div class="pokemon-number">
-                #${i + 1}
-                </div>
-                <!--image-->
-                <div class="height-limitter-50 center">
-                <img id="pokemonImageId${[i]}" class="pokemonImage" onclick="showPokemonDetails('${name}', ${i})">
-                </div>
-                <!--description-->
-                <div class="height-limitter-50 center-vertical">
-                    <div class="pokemon-info-box">
-                        <div class="pokemon-name center-vertical">
-                            <b>${name.toUpperCase()}</b>
-                        </div>
-                        <div id="pokemon-type-image-id${[i]}" class="pokemon-type center">
-                        </div>
-                    </div>
-                </div >
-        </div >
-            `;
+        document.getElementById('pokemonCollectionId').innerHTML += pokemonCollection(i, name);
     }
 }
-async function loadPokemonAPI(name, i) {
+
+function pokemonCollection(i, name) {
+    return /* html */ `
+    <div class="pokemon-card" id="pokemon-card-id${[i]}">
+            <!--number-->
+            <div class="pokemon-number">
+                #${i + 1}
+            </div>
+            <!--image-->
+            <div class="height-limitter-50 center">
+                <img id="pokemonImageId${[i]}" class="pokemonImage" onclick="renderBigView('${name}', ${i})">
+            </div>
+            <!--description-->
+            <div class="height-limitter-50 center-vertical">
+                <div class="pokemon-info-box">
+                    <div class="pokemon-name center-vertical">
+                        <b>${name.toUpperCase()}</b>
+                    </div>
+                    <div id="pokemon-type-image-id${[i]}" class="pokemon-type       center">
+                    </div>
+                </div>
+            </div >
+    </div >
+        `
+}
+
+async function renderImageTypeColor(name, i) {
     let url = `https://pokeapi.co/api/v2/pokemon/${name}`;
     let response = await fetch(url);
     let pokemonAPI = await response.json();
@@ -95,18 +100,21 @@ async function loadPokemonAPI(name, i) {
     let loadImage = pokemonAPI['sprites']['other']['home']['front_default'];
     document.getElementById(`pokemonImageId${[i]}`).src = /* html */ `
      ${loadImage}`;
+    // type backgrounds color
+    typeImageAndColor(pokemonAPI, i);
+}
 
+function typeImageAndColor(pokemonAPI, i) {
     let allTypes = pokemonAPI['types'];
     let typeBackgrounds = [];
-
-    // backgrounds:
     for (let j = 0; j < allTypes.length; j++) {
         let type = allTypes[j];
         let typeName = type['type']['name'];
-
+        // type images
         document.getElementById(`pokemon-type-image-id${[i]}`).innerHTML += /* html */ `
         <img src="./img/${typeName}-solid-white.png" class="pokemon-type-image">`;
 
+        // backgrounds:
         document.getElementById(`pokemon-card-id${[i]}`).style.backgroundColor = typeColors[typeName];
 
         typeBackgrounds.push(typeColors[typeName]);
@@ -122,17 +130,17 @@ function loadMore() {
     loadPokemonCollection();
 }
 
-async function showPokemonDetails(name, j) {
-    pokemonBigView(name, j);
+async function renderBigView(name, i) {
+    renderBigViewInfos(name, i);
     document.getElementById('pokemonDetailsId').innerHTML = '';
     document.getElementById('pokemonDetailsId').innerHTML += /* html */ `
     <!--mit limitter mittig ausrichten-->
     <div class="dark-background" onclick="closeBigView()" id="deleteBackgroundId">
     </div>
     <div class="cardOnBigViewLimitter" id="deletePokemonCardId">
-        <div class="card-on-big-view" id="pokemon-card-on-big-view-id${[j]}">
+        <div class="card-on-big-view" id="pokemon-card-on-big-view-id${[i]}">
             <div class="pokemon-number-on-big-view delete">
-                #${j + 1}
+                #${i + 1}
             </div>
             <div class="pokemon-name-image-type-on-big-view">
                 <!--image-on-big-view-->
@@ -141,7 +149,7 @@ async function showPokemonDetails(name, j) {
                 <div class="pokemon-name-type-limitter">
                     <h1 class="pokemon-name-on-big-screen">${name.toUpperCase()}</h1>
                     <!--type-on-big-view-->
-                    <div id="pokemon-type-on-big-view-id${[j]}" class="center pokemon-type-on-big-screen">
+                    <div id="pokemon-type-on-big-view-id${[i]}" class="center pokemon-type-on-big-screen">
                     </div>
                 </div>
             </div>
@@ -155,40 +163,44 @@ async function showPokemonDetails(name, j) {
     </div>`
 }
 
-async function pokemonBigView(name, j) {
+async function renderBigViewInfos(name, i) {
     baseStatsNamesArray = []; // Arrays zu Beginn leeren
     baseStatsValuesArray = []; // Arrays zu Beginn leeren
     let url = `https://pokeapi.co/api/v2/pokemon/${name}`;
     let response = await fetch(url);
-    let currentCharacters = await response.json();
-    let currentPokemonImageInDetail = currentCharacters['sprites']['other']['home']['front_default'];
-    document.getElementById('pokemon-image-on-big-view-id').src = currentPokemonImageInDetail;
+    let pokemonAPI = await response.json();
+    let loadImage = pokemonAPI['sprites']['other']['home']['front_default'];
+    document.getElementById('pokemon-image-on-big-view-id').src = loadImage;
 
+    typeImageAndColorBigView(pokemonAPI, i); // Typenbilder, Typenbeschreibung, Hintergrundfarbe
+    chart(pokemonAPI); // Balkendiagramm
+}
 
-    let allTypes = currentCharacters['types'];
+function typeImageAndColorBigView(pokemonAPI, i) {
+    let allTypes = pokemonAPI['types'];
     let typeBackgrounds = [];
-
-    // backgrounds:
-    for (let k = 0; k < allTypes.length; k++) {
-        let type = allTypes[k];
+    for (let j = 0; j < allTypes.length; j++) {
+        let type = allTypes[j];
         let typeName = type['type']['name'];
-
-        document.getElementById(`pokemon-type-on-big-view-id${[j]}`).innerHTML += /* html */ `
+        //type image
+        document.getElementById(`pokemon-type-on-big-view-id${[i]}`).innerHTML +=
+        /* html */ `
         <img src="./img/${typeName}-solid-white.png" class="pokemon-type-image">
-        <div>${typeName}</div>
-        `;
+        <div>${typeName}</div>`;
 
-        document.getElementById(`pokemon-card-on-big-view-id${[j]}`).style.backgroundColor = typeColors[typeName];
+        document.getElementById(`pokemon-card-on-big-view-id${[i]}`).style.backgroundColor = typeColors[typeName];
 
         typeBackgrounds.push(typeColors[typeName]);
 
         // Farbverlauf
-        document.getElementById(`pokemon-card-on-big-view-id${[j]}`).style.background = `linear-gradient(to right, ${typeBackgrounds.join(', ')})`;
+        document.getElementById(`pokemon-card-on-big-view-id${[i]}`).style.background = `linear-gradient(to right, ${typeBackgrounds.join(', ')})`;
     }
+}
 
-    let currentAbilities = currentCharacters['stats'];
-    for (let i = 0; i < currentAbilities.length; i++) {
-        let currentAbility = currentAbilities[i];
+function chart(pokemonAPI) {
+    let currentAbilities = pokemonAPI['stats'];
+    for (let j = 0; j < currentAbilities.length; j++) {
+        let currentAbility = currentAbilities[j];
         // stats Namen in die Arrays
         let currentAbilityName = currentAbility['stat']['name'];
         let currentAbilityValue = currentAbility['base_stat'];
@@ -220,7 +232,6 @@ function resetSearch() {
 }
 
 function closeBigView() {
-    // const cardOnBigViewLimitter = document.querySelector('.dark-background');
     deletePokemonCardId.style.display = 'none';
     deleteBackgroundId.style.display = 'none';
 }
