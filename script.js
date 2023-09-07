@@ -133,7 +133,11 @@ function loadMore() {
 async function renderBigView(name, i) {
     renderBigViewInfos(name, i);
     document.getElementById('pokemonDetailsId').innerHTML = '';
-    document.getElementById('pokemonDetailsId').innerHTML += /* html */ `
+    document.getElementById('pokemonDetailsId').innerHTML += cardBigView(i, name);
+}
+
+function cardBigView(i, name) {
+    return /* html */ `
     <!--mit limitter mittig ausrichten-->
     <div class="dark-background" onclick="closeBigView()" id="deleteBackgroundId">
     </div>
@@ -161,6 +165,7 @@ async function renderBigView(name, i) {
             </div>
         </div>
     </div>`
+
 }
 
 async function renderBigViewInfos(name, i) {
