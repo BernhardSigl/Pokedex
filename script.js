@@ -19,6 +19,8 @@ const typeColors = {
     normal: "#AAA67F"
 };
 
+let pokemonAPIglobal;
+
 async function init() {
     await includeHTML();
     await renderAPI();
@@ -124,16 +126,32 @@ function typeImageAndColor(pokemonAPI, i) {
     }
 }
 
-function loadMore() {
+window.addEventListener('scroll', () => {
+    // Überprüfen, ob das Ende der Seite erreicht wurde
+    if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) {
+        // Hier wird der Code ausgeführt, wenn das Ende der Seite erreicht wurde
+        console.log('end');
+        loadMore();
+    }
+});
+
+async function loadMore() {
     limit += 20;
     document.getElementById('pokemonCollectionId').innerHTML = '';
-    loadPokemonCollection();
+    renderAPI();
 }
 
 async function renderBigView(name, i) {
+    pokemonAPIglobal = await fetchPokemonData(name);
     renderBigViewInfos(name, i);
     document.getElementById('pokemonDetailsId').innerHTML = '';
-    document.getElementById('pokemonDetailsId').innerHTML += cardBigView(i, name);
+    document.getElementById('pokemonDetailsId').innerHTML += cardBigView(i, name, pokemonAPIglobal);
+}
+
+async function fetchPokemonData(name) {
+    let url = `https://pokeapi.co/api/v2/pokemon/${name}`;
+    let response = await fetch(url);
+    return response.json();
 }
 
 function cardBigView(i, name) {
@@ -158,14 +176,35 @@ function cardBigView(i, name) {
                 </div>
             </div>
             <div class="info-container center-horicontal">
-                    <div class="baseStats">
-                        <canvas id="myChartId">
-                        </canvas>
+                    <div class="cardInfo" id="cardInfoId">
+                        <h2 onclick="openAbout(pokemonAPIglobal)">About</h2>
+                        <h2 onclick="openChart()">Stats</h2>
+                        <h2 onclick="openEvolutions()">Evolutions</h2>
+                    </div>
+                    <div class="cardInfoContentLimitter center-horicontal">
+                    <div class="cardInfoContent">
+                            <div id="aboutId">
+                            </div>
+                            <div id="openChartId">
+                            </div>
+                            <div>
+                            </div>
+                        <div>
                     </div>
             </div>
         </div>
     </div>`
+}
 
+function openChart() {
+    show('openChartId');
+    hide('aboutId');
+    document.querySelector('h2[onclick="openAbout(pokemonAPIglobal)"]').classList.remove('underlined');
+    document.querySelector('h2[onclick="openChart()"]').classList.add('underlined');
+    document.getElementById('openChartId').innerHTML = `
+    <canvas id="myChartId">
+    </canvas>`;
+    renderChart();
 }
 
 async function renderBigViewInfos(name, i) {
@@ -173,12 +212,14 @@ async function renderBigViewInfos(name, i) {
     baseStatsValuesArray = []; // Arrays zu Beginn leeren
     let url = `https://pokeapi.co/api/v2/pokemon/${name}`;
     let response = await fetch(url);
-    let pokemonAPI = await response.json();
-    let loadImage = pokemonAPI['sprites']['other']['home']['front_default'];
+    await response.json();
+    let loadImage = pokemonAPIglobal['sprites']['other']['home']['front_default'];
     document.getElementById('pokemon-image-on-big-view-id').src = loadImage;
 
-    typeImageAndColorBigView(pokemonAPI, i); // Typenbilder, Typenbeschreibung, Hintergrundfarbe
-    chart(pokemonAPI); // Balkendiagramm
+    typeImageAndColorBigView(pokemonAPIglobal, i); // Typenbilder, Typenbeschreibung, Hintergrundfarbe
+    chart(pokemonAPIglobal); // Balkendiagramm
+    // openChart();
+    openAbout(pokemonAPIglobal); // Infos über das Pokemon
 }
 
 function typeImageAndColorBigView(pokemonAPI, i) {
@@ -202,8 +243,8 @@ function typeImageAndColorBigView(pokemonAPI, i) {
     }
 }
 
-function chart(pokemonAPI) {
-    let currentAbilities = pokemonAPI['stats'];
+function chart(pokemonAPIglobal) {
+    let currentAbilities = pokemonAPIglobal['stats'];
     for (let j = 0; j < currentAbilities.length; j++) {
         let currentAbility = currentAbilities[j];
         // stats Namen in die Arrays
@@ -212,20 +253,42 @@ function chart(pokemonAPI) {
         baseStatsNamesArray.push(currentAbilityName.toUpperCase()); // ins Array für die chart.js
         baseStatsValuesArray.push(currentAbilityValue); // ins Array für die chart.js
     }
-    renderChart();
 }
 
-// Funktion zur Filterung der Pokemon-Namen
+function openAbout(pokemonAPIglobal) {
+    hide('openChartId');
+    show('aboutId');
+    let weight = pokemonAPIglobal['weight'];
+    let height = pokemonAPIglobal['height'];
+    let exp = pokemonAPIglobal['base_experience'];
+    document.getElementById('aboutId').innerHTML = /* html */ `
+    <h3>Overview</h3>
+    <div class="overviewLimitter">
+        <h4><b>Weight:</b><h4>${weight / 10} kg</h4>
+    </div>
+    <div class="overviewLimitter">
+        <h4><b>Height:</b></h4><h4>${height / 10} m</h4>
+    </div>
+    <div class="overviewLimitter">
+        <h4><b>Exp:</b></h4><h4>${exp}</h4>
+    </div>
+    `;
+
+    document.querySelector('h2[onclick="openAbout(pokemonAPIglobal)"]').classList.add('underlined');
+    document.querySelector('h2[onclick="openChart()"]').classList.remove('underlined');
+}
+
 function filterNames() {
     let search = document.getElementById('searchId').value.toLowerCase();
-    let cards = document.getElementsByClassName('pokemon-card');
 
-    for (let i = 0; i < cards.length; i++) {
+    for (let i = 0; i < pokemonCardArray.length; i++) {
         let name = pokemonCardArray[i].toLowerCase();
+        let card = document.getElementById(`pokemon-card-id${i}`);
+
         if (search === '' || name.includes(search)) {
-            cards[i].style.display = 'block'; // Karte anzeigen
+            card.style.display = 'block'; // Karte anzeigen
         } else {
-            cards[i].style.display = 'none'; // Karte ausblenden
+            card.style.display = 'none'; // Karte ausblenden
         }
     }
 }
@@ -239,4 +302,11 @@ function resetSearch() {
 function closeBigView() {
     deletePokemonCardId.style.display = 'none';
     deleteBackgroundId.style.display = 'none';
+}
+
+function hide(id) {
+    document.getElementById(id).classList.add('d-none');
+}
+function show(id) {
+    document.getElementById(id).classList.remove('d-none');
 }
