@@ -17,16 +17,19 @@
 <body onload="init()">
     <div w3-include-html=" templates/header.html">
     </div>
+    <div class="top" id="scrollToTop"></div>
+    <div id="pokemonCollectionId"></div>
 
-    <div id="pokemonCollectionId"></div> <!--Gesamte Collection Mittig ausrichten + gap-->
-
-    <!-- <button onclick="loadMore()">Load More</button> -->
     <div id="pokemonDetailsId">
-
     </div>
 
+    <div id="loadingOverlay" class="loading-overlay">
+        <img src="./img/pokeball.png" class="loader">
+    </div>
 
-
+    <a class="scrollToTopBackground center" href="#scrollToTop" id="showScrollButtonId">
+        <img src="./img/arrow-up-solid-white.png" class="scrollToTopImage">
+    </a>
 </body>
 
 </html>

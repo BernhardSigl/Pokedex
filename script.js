@@ -20,10 +20,14 @@ const typeColors = {
 };
 
 let pokemonAPIglobal;
+let isLoading = false;
+let isFiltered = false;
 
 async function init() {
     await includeHTML();
     await renderAPI();
+    await renderSearchAPI();
+    toggleVisibility('showScrollButtonId', false); // Pfeil zum nach oben scrollen, soll erst erscheinen, sobald 20 weitere Pokemon geladen sind
 }
 
 async function includeHTML() {
@@ -45,40 +49,54 @@ let baseStatsNamesArray = [];
 let baseStatsValuesArray = [];
 
 // Load More
-let limit = 20;
+let limit = 0;
 
 // Für Suchfunktion
 let pokemonCardArray = [];
 
 // Alle Pokemons laden bis zum Limit
 async function renderAPI() {
-    let url = `https://pokeapi.co/api/v2/pokemon?limit=${limit}&offset=0`;
+    let url = `https://pokeapi.co/api/v2/pokemon?offset=${limit}&limit=20`;
     let response = await fetch(url);
     let pokemonAPI = await response.json();
-    renderInfos(pokemonAPI);
+    renderInfos(pokemonAPI, limit);
 }
 
-function renderInfos(pokemonAPI) {
+async function renderSearchAPI() {
+    let urlForSearch = `https://pokeapi.co/api/v2/pokemon?limit=100000&offset=0`;
+    let responseForSearch = await fetch(urlForSearch);
+    let loadAllPokemon = await responseForSearch.json();
+    renderAllPokemonNames(loadAllPokemon);
+}
+
+function renderInfos(pokemonAPI, limit) {
     let allNames = pokemonAPI['results'];
     for (let i = 0; i < allNames.length; i++) {
         let name = allNames[i]['name']; // zeigt alle Pokemon Namen
-        pokemonCardArray.push(name); // für die Suchfunktion
-        renderImageTypeColor(name, i);
+        renderImageTypeColor(i + limit, name);
         // Pokemon Namen auf der Index Startseite einblenden
-        document.getElementById('pokemonCollectionId').innerHTML += pokemonCollection(i, name);
+        document.getElementById('pokemonCollectionId').innerHTML += pokemonCollection((i + limit), name);
+    }
+}
+
+function renderAllPokemonNames(loadAllPokemon) {
+    let loadAllPokemonNames = loadAllPokemon['results'];
+    for (let j = 0; j < loadAllPokemonNames.length; j++) {
+        const allNamesForSearch = loadAllPokemonNames[j]['name'];
+        pokemonCardArray.push(allNamesForSearch); // für die Suchfunktion
     }
 }
 
 function pokemonCollection(i, name) {
     return /* html */ `
-    <div class="pokemon-card" id="pokemon-card-id${[i]}">
+    <div class="pokemon-card" id="pokemon-card-id${[i]}" onclick="renderBigView('${name}', ${i})">
             <!--number-->
             <div class="pokemon-number">
                 #${i + 1}
             </div>
             <!--image-->
             <div class="height-limitter-50 center">
-                <img id="pokemonImageId${[i]}" class="pokemonImage" onclick="renderBigView('${name}', ${i})">
+                <img id="pokemonImageId${[i]}" class="pokemonImage">
             </div>
             <!--description-->
             <div class="height-limitter-50 center-vertical">
@@ -86,7 +104,7 @@ function pokemonCollection(i, name) {
                     <div class="pokemon-name center-vertical">
                         <b>${name.toUpperCase()}</b>
                     </div>
-                    <div id="pokemon-type-image-id${[i]}" class="pokemon-type       center">
+                    <div id="pokemon-type-image-id${[i]}" class="pokemon-type center">
                     </div>
                 </div>
             </div >
@@ -94,12 +112,12 @@ function pokemonCollection(i, name) {
         `
 }
 
-async function renderImageTypeColor(name, i) {
+async function renderImageTypeColor(i, name) {
     let url = `https://pokeapi.co/api/v2/pokemon/${name}`;
     let response = await fetch(url);
     let pokemonAPI = await response.json();
     // load image:
-    let loadImage = pokemonAPI['sprites']['other']['home']['front_default'];
+    let loadImage = pokemonAPI['sprites']['other']['official-artwork']['front_default'];
     document.getElementById(`pokemonImageId${[i]}`).src = /* html */ `
      ${loadImage}`;
     // type backgrounds color
@@ -127,25 +145,41 @@ function typeImageAndColor(pokemonAPI, i) {
 }
 
 window.addEventListener('scroll', () => {
-    // Überprüfen, ob das Ende der Seite erreicht wurde
-    if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) {
-        // Hier wird der Code ausgeführt, wenn das Ende der Seite erreicht wurde
-        console.log('end');
-        loadMore();
+    if (!isLoading && !isFiltered) {
+        if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 1.0) {
+            loadMore();
+        }
     }
 });
 
 async function loadMore() {
-    limit += 20;
-    document.getElementById('pokemonCollectionId').innerHTML = '';
-    renderAPI();
+    if (!isLoading) {
+        isLoading = true;
+        // Zeige die Ladeanimation
+        document.getElementById('loadingOverlay').style.display = 'flex';
+        await new Promise(resolve => setTimeout(resolve, 2500));
+        limit += 20;
+        await renderAPI();
+        isLoading = false;
+
+        // Verberge die Ladeanimation
+        document.getElementById('loadingOverlay').style.display = 'none';
+        toggleVisibility('showScrollButtonId', true);
+    }
 }
 
 async function renderBigView(name, i) {
     pokemonAPIglobal = await fetchPokemonData(name);
     renderBigViewInfos(name, i);
     document.getElementById('pokemonDetailsId').innerHTML = '';
-    document.getElementById('pokemonDetailsId').innerHTML += cardBigView(i, name, pokemonAPIglobal);
+    document.getElementById('pokemonDetailsId').innerHTML += cardBigView(name, i);
+    if (i < 1) {
+        toggleVisibility('arrowleftId', false);
+    }
+    if (i === pokemonCardArray.length - 1) {
+        toggleVisibility('arrowrightId', false);
+    }
+    toggleVisibility('showScrollButtonId', false);
 }
 
 async function fetchPokemonData(name) {
@@ -154,17 +188,22 @@ async function fetchPokemonData(name) {
     return response.json();
 }
 
-function cardBigView(i, name) {
+function cardBigView(name, i) {
     return /* html */ `
     <!--mit limitter mittig ausrichten-->
     <div class="dark-background" onclick="closeBigView()" id="deleteBackgroundId">
     </div>
     <div class="cardOnBigViewLimitter" id="deletePokemonCardId">
+    <img onclick="back(${i})" src="./img/arrowleft.png" id="arrowleftId">
+    <img onclick="next(${i})" src="./img/arrowright.png" id="arrowrightId">
         <div class="card-on-big-view" id="pokemon-card-on-big-view-id${[i]}">
             <div class="pokemon-number-on-big-view delete">
                 #${i + 1}
             </div>
             <div class="pokemon-name-image-type-on-big-view">
+            <div class="closeBigView center" onclick="closeBigView()">
+                <img src="./img/x-white.png">
+            </div>
                 <!--image-on-big-view-->
                 <img id="pokemon-image-on-big-view-id">
                 <!--name-on-big-view-->
@@ -179,7 +218,7 @@ function cardBigView(i, name) {
                     <div class="cardInfo" id="cardInfoId">
                         <h2 onclick="openAbout(pokemonAPIglobal)">About</h2>
                         <h2 onclick="openChart()">Stats</h2>
-                        <h2 onclick="openEvolutions()">Evolutions</h2>
+                        <h2 onclick="openAbilities(pokemonAPIglobal)">Abilities</h2>
                     </div>
                     <div class="cardInfoContentLimitter center-horicontal">
                     <div class="cardInfoContent">
@@ -187,7 +226,7 @@ function cardBigView(i, name) {
                             </div>
                             <div id="openChartId">
                             </div>
-                            <div>
+                            <div id="abilityId">
                             </div>
                         <div>
                     </div>
@@ -196,11 +235,25 @@ function cardBigView(i, name) {
     </div>`
 }
 
+function next(i) {
+    i++;
+    renderBigView(pokemonCardArray[i], i);
+}
+
+function back(i) {
+    i--;
+    renderBigView(pokemonCardArray[i], i);
+}
+
 function openChart() {
-    show('openChartId');
-    hide('aboutId');
+    toggleVisibility('openChartId', true);
+    toggleVisibility('aboutId', false);
+    toggleVisibility('abilityId', false);
+    // underline area
     document.querySelector('h2[onclick="openAbout(pokemonAPIglobal)"]').classList.remove('underlined');
+    document.querySelector('h2[onclick="openAbilities(pokemonAPIglobal)"]').classList.remove('underlined');
     document.querySelector('h2[onclick="openChart()"]').classList.add('underlined');
+
     document.getElementById('openChartId').innerHTML = `
     <canvas id="myChartId">
     </canvas>`;
@@ -213,13 +266,13 @@ async function renderBigViewInfos(name, i) {
     let url = `https://pokeapi.co/api/v2/pokemon/${name}`;
     let response = await fetch(url);
     await response.json();
-    let loadImage = pokemonAPIglobal['sprites']['other']['home']['front_default'];
+    let loadImage = pokemonAPIglobal['sprites']['other']['official-artwork']['front_default'];
     document.getElementById('pokemon-image-on-big-view-id').src = loadImage;
 
     typeImageAndColorBigView(pokemonAPIglobal, i); // Typenbilder, Typenbeschreibung, Hintergrundfarbe
     chart(pokemonAPIglobal); // Balkendiagramm
-    // openChart();
-    openAbout(pokemonAPIglobal); // Infos über das Pokemon
+    openAbilities(pokemonAPIglobal);
+    openAbout(pokemonAPIglobal); // Infos über das Pokemon. Wichtig: Die unterste Funktion wird automatisch beim öffnen der Karte angezeigt.
 }
 
 function typeImageAndColorBigView(pokemonAPI, i) {
@@ -256,8 +309,9 @@ function chart(pokemonAPIglobal) {
 }
 
 function openAbout(pokemonAPIglobal) {
-    hide('openChartId');
-    show('aboutId');
+    toggleVisibility('openChartId', false);
+    toggleVisibility('aboutId', true);
+    toggleVisibility('abilityId', false);
     let weight = pokemonAPIglobal['weight'];
     let height = pokemonAPIglobal['height'];
     let exp = pokemonAPIglobal['base_experience'];
@@ -274,39 +328,60 @@ function openAbout(pokemonAPIglobal) {
     </div>
     `;
 
+    // underline area
     document.querySelector('h2[onclick="openAbout(pokemonAPIglobal)"]').classList.add('underlined');
+    document.querySelector('h2[onclick="openAbilities(pokemonAPIglobal)"]').classList.remove('underlined');
     document.querySelector('h2[onclick="openChart()"]').classList.remove('underlined');
 }
 
-function filterNames() {
-    let search = document.getElementById('searchId').value.toLowerCase();
-
-    for (let i = 0; i < pokemonCardArray.length; i++) {
-        let name = pokemonCardArray[i].toLowerCase();
-        let card = document.getElementById(`pokemon-card-id${i}`);
-
-        if (search === '' || name.includes(search)) {
-            card.style.display = 'block'; // Karte anzeigen
-        } else {
-            card.style.display = 'none'; // Karte ausblenden
-        }
+function openAbilities(pokemonAPIglobal) {
+    toggleVisibility('openChartId', false);
+    toggleVisibility('aboutId', false);
+    toggleVisibility('abilityId', true);
+    const abilities = pokemonAPIglobal['abilities'];
+    document.getElementById('abilityId').innerHTML = '';
+    for (let i = 0; i < abilities.length; i++) {
+        let ability = abilities[i]['ability']['name'];
+        document.getElementById('abilityId').innerHTML += /* html */ `
+        <div class="center">
+            <h4>${ability.toUpperCase()}</h4>
+        </div>
+        `;
     }
-}
-
-function resetSearch() {
-    if (document.getElementById('searchId').value === '') {
-        filterNames();
-    }
+    // underline area
+    document.querySelector('h2[onclick="openAbout(pokemonAPIglobal)"]').classList.remove('underlined');
+    document.querySelector('h2[onclick="openAbilities(pokemonAPIglobal)"]').classList.add('underlined');
+    document.querySelector('h2[onclick="openChart()"]').classList.remove('underlined');
 }
 
 function closeBigView() {
-    deletePokemonCardId.style.display = 'none';
-    deleteBackgroundId.style.display = 'none';
+    toggleVisibility('deleteBackgroundId', false);
+    toggleVisibility('deletePokemonCardId', false);
+    toggleVisibility('showScrollButtonId', true);
 }
 
-function hide(id) {
-    document.getElementById(id).classList.add('d-none');
+function toggleVisibility(id, show) {
+    const showHide = document.getElementById(id);
+    showHide.classList.toggle('d-none', !show);
 }
-function show(id) {
-    document.getElementById(id).classList.remove('d-none');
+
+function filterNames() {
+    isFiltered = true;
+    let searchInputValue = document.getElementById('searchId').value.toLowerCase();
+    let displayedPokemonCount = 0;
+
+    // Leeren Sie das Pokémon-Collection-Div, um es neu zu füllen
+    document.getElementById('pokemonCollectionId').innerHTML = '';
+
+    for (let i = 0; i < pokemonCardArray.length; i++) {
+        let name = pokemonCardArray[i];
+        if (name.includes(searchInputValue)) {
+            renderImageTypeColor(i, name);
+            document.getElementById('pokemonCollectionId').innerHTML += pokemonCollection(i, name);
+            displayedPokemonCount++;
+        }
+        if (displayedPokemonCount >= 20) {
+            break;
+        }
+    }
 }
