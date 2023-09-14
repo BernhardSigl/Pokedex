@@ -355,8 +355,8 @@ function openAbilities(pokemonAPIglobal) {
 }
 
 function closeBigView() {
-    toggleVisibility('deleteBackgroundId', false);
-    toggleVisibility('deletePokemonCardId', false);
+    deletePokemonCardId.style.display = 'none';
+    deleteBackgroundId.style.display = 'none';
     toggleVisibility('showScrollButtonId', true);
 }
 
