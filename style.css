@@ -390,6 +390,37 @@ p {
     background-position: top, bottom;
 }
 
+/* fonts */
+h1 {
+    margin: 0;
+}
+
+h2 {
+    margin: 0;
+    font-size: 20px;
+}
+
+h3 {
+    margin: 8px 0;
+    font-size: 18px;
+}
+
+h2,
+h3,
+h4 {
+    color: white;
+}
+
+h4 {
+    font-weight: 500;
+    margin: 4px 0;
+}
+
+h5 {
+    margin: 0;
+    font-weight: 500;
+}
+
 @media(max-width: 820px) {
     .deleteMe {
         display: none;
