@@ -11,6 +11,10 @@ html {
     justify-content: center;
 }
 
+body.disable-scroll {
+    overflow: hidden;
+}
+
 .headerTitle {
     color: white;
     text-shadow: 0px 0px 3px #000000;
@@ -294,6 +298,9 @@ p {
 
 #searchId {
     height: 24px;
+    border-radius: 4px;
+    border: solid 2px black;
+    padding: 0 12px;
 }
 
 /* Ladeanimation */
@@ -303,7 +310,7 @@ p {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(255, 255, 255, 0.7);
+    background-color: rgba(0, 0, 0, 0.6);
     display: none;
     justify-content: center;
     align-items: center;
@@ -372,6 +379,30 @@ p {
 
 #arrowrightId {
     right: -42px;
+}
+
+/* slide animation */
+#slideBackgroundId {
+    width: 100vw;
+    height: 100vh;
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.slide-in {
+    animation: slide-in 0.5s ease;
+}
+
+@keyframes slide-in {
+    0% {
+        transform: translateX(400%);
+    }
+
+    100% {
+        transform: translateX(0);
+    }
 }
 
 /* custom scrollbar */

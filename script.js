@@ -22,12 +22,15 @@ const typeColors = {
 let pokemonAPIglobal;
 let isLoading = false;
 let isFiltered = false;
+let bigView = false;
 
 async function init() {
+    document.getElementById('loadingOverlay').style.display = 'flex';
     await includeHTML();
     await renderAPI();
     await renderSearchAPI();
     toggleVisibility('showScrollButtonId', false); // Pfeil zum nach oben scrollen, soll erst erscheinen, sobald 20 weitere Pokemon geladen sind
+    document.getElementById('loadingOverlay').style.display = 'none';
 }
 
 async function includeHTML() {
@@ -53,12 +56,14 @@ let limit = 0;
 
 // Für Suchfunktion
 let pokemonCardArray = [];
+let originalLoadedPokemonCount;
 
 // Alle Pokemons laden bis zum Limit
 async function renderAPI() {
     let url = `https://pokeapi.co/api/v2/pokemon?offset=${limit}&limit=20`;
     let response = await fetch(url);
     let pokemonAPI = await response.json();
+    originalLoadedPokemonCount = pokemonAPI.count;
     renderInfos(pokemonAPI, limit);
 }
 
@@ -117,9 +122,13 @@ async function renderImageTypeColor(i, name) {
     let response = await fetch(url);
     let pokemonAPI = await response.json();
     // load image:
-    let loadImage = pokemonAPI['sprites']['other']['official-artwork']['front_default'];
-    document.getElementById(`pokemonImageId${[i]}`).src = /* html */ `
-     ${loadImage}`;
+    let imageElement = document.getElementById(`pokemonImageId${[i]}`);
+    if (imageElement) {
+        imageElement.src = pokemonAPI['sprites']['other']['official-artwork']['front_default'];
+        imageElement.onerror = function () {
+            imageElement.src = 'img/pokeball.png';
+        };
+    }
     // type backgrounds color
     typeImageAndColor(pokemonAPI, i);
 }
@@ -130,17 +139,20 @@ function typeImageAndColor(pokemonAPI, i) {
     for (let j = 0; j < allTypes.length; j++) {
         let type = allTypes[j];
         let typeName = type['type']['name'];
-        // type images
-        document.getElementById(`pokemon-type-image-id${[i]}`).innerHTML += /* html */ `
+        try {
+            // type images
+            document.getElementById(`pokemon-type-image-id${[i]}`).innerHTML += /* html */ `
         <img src="./img/${typeName}-solid-white.png" class="pokemon-type-image">`;
 
-        // backgrounds:
-        document.getElementById(`pokemon-card-id${[i]}`).style.backgroundColor = typeColors[typeName];
+            // backgrounds:
+            document.getElementById(`pokemon-card-id${[i]}`).style.backgroundColor = typeColors[typeName];
 
-        typeBackgrounds.push(typeColors[typeName]);
+            typeBackgrounds.push(typeColors[typeName]);
 
-        // Farbverlauf
-        document.getElementById(`pokemon-card-id${[i]}`).style.background = `linear-gradient(to right, ${typeBackgrounds.join(', ')})`;
+            // Farbverlauf
+            document.getElementById(`pokemon-card-id${[i]}`).style.background = `linear-gradient(to right, ${typeBackgrounds.join(', ')})`;
+        } catch (error) {
+        }
     }
 }
 
@@ -155,6 +167,7 @@ window.addEventListener('scroll', () => {
 async function loadMore() {
     if (!isLoading) {
         isLoading = true;
+        document.body.classList.add('disable-scroll');
         // Zeige die Ladeanimation
         document.getElementById('loadingOverlay').style.display = 'flex';
         await new Promise(resolve => setTimeout(resolve, 2500));
@@ -164,15 +177,18 @@ async function loadMore() {
 
         // Verberge die Ladeanimation
         document.getElementById('loadingOverlay').style.display = 'none';
+        document.body.classList.remove('disable-scroll');
         toggleVisibility('showScrollButtonId', true);
     }
 }
 
 async function renderBigView(name, i) {
+    bigView = true;
     pokemonAPIglobal = await fetchPokemonData(name);
     renderBigViewInfos(name, i);
     document.getElementById('pokemonDetailsId').innerHTML = '';
     document.getElementById('pokemonDetailsId').innerHTML += cardBigView(name, i);
+    slide(`pokemon-card-on-big-view-id${i}`);
     if (i < 1) {
         toggleVisibility('arrowleftId', false);
     }
@@ -358,30 +374,52 @@ function closeBigView() {
     deletePokemonCardId.style.display = 'none';
     deleteBackgroundId.style.display = 'none';
     toggleVisibility('showScrollButtonId', true);
+    document.body.classList.remove('disable-scroll');
+    bigView = false;
 }
 
 function toggleVisibility(id, show) {
     const showHide = document.getElementById(id);
     showHide.classList.toggle('d-none', !show);
 }
-
+let searchTimeout;
 function filterNames() {
+    if (bigView === true) {
+        closeBigView();
+    }
     isFiltered = true;
     let searchInputValue = document.getElementById('searchId').value.toLowerCase();
     let displayedPokemonCount = 0;
 
     // Leeren Sie das Pokémon-Collection-Div, um es neu zu füllen
     document.getElementById('pokemonCollectionId').innerHTML = '';
-
-    for (let i = 0; i < pokemonCardArray.length; i++) {
-        let name = pokemonCardArray[i];
-        if (name.includes(searchInputValue)) {
-            renderImageTypeColor(i, name);
-            document.getElementById('pokemonCollectionId').innerHTML += pokemonCollection(i, name);
-            displayedPokemonCount++;
-        }
-        if (displayedPokemonCount >= 20) {
-            break;
-        }
+    if (searchInputValue === '') {
+        isFiltered = false;
+    } else {
+        isFiltered = true;
     }
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(async function () {
+        for (let i = 0; i < pokemonCardArray.length; i++) {
+            let name = pokemonCardArray[i];
+            if (name.includes(searchInputValue)) {
+                renderImageTypeColor(i, name);
+                document.getElementById('pokemonCollectionId').innerHTML += pokemonCollection(i, name);
+                displayedPokemonCount++;
+            }
+            if (displayedPokemonCount >= 20) {
+                break;
+            }
+        }
+    }, 200);
+}
+
+function slide(frontId) {
+    document.body.classList.add('disable-scroll');
+    slideInAnimation = document.getElementById(frontId);
+    toggleVisibility(frontId, true);
+    slideInAnimation.classList.add('slide-in');
+    setTimeout(function () {
+        slideInAnimation.classList.remove('slide-in');
+    }, 500);
 }
